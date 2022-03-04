@@ -1,0 +1,98 @@
+---
+title: "Anomalia en Kilometros"
+---
+author: "Juan Velez"
+---
+date: "4/3/2022"
+---
+
+
+
+#Librerias utilizadas
+```{r}
+library(tidyverse)
+library(dplyr)
+library(kableExtra)
+library(readxl)
+```
+#Determinar directorio de trabajo
+```{r}
+setwd("C:/Users/jcvel/Downloads/Prueba de analisis de datos")
+```
+# Cargar dataset
+```{r}
+SNE_1 <- read.csv2("Ejercicio 1/SNE (servicios no ejececutados)/20211001_SNE.csv")
+kableExtra::kbl(head(SNE_1), caption = "SNE_20211001", align = "lccrr") %>%
+kable_classic(full_width = F, html_font = "Cambria")
+
+```
+# filtrar por la columna responsable la opcion "Cop"
+```{r}
+SNE_1 <- filter(SNE_1, SNE_1$Responsable == "Cop")
+```
+# filtrar por la columna observación la opcion "F2 inicio_fin Ruta" o "Estados de Localización"
+```{r}
+SNE_1 <- filter(SNE_1, SNE_1$Observación == "F2 inicio_fin Ruta" | SNE_1$Observación == "Estados de Localización")
+```
+# verificacion medidas de las variables
+```{r}
+str(SNE_1)
+```
+# cargar data 20211001_ViajesSTAT
+se realizo una granulacion para simplificar la data y extraer lo que se necesita de la misma
+```{r}
+viajesSTAT <- read_excel("Ejercicio 1/Archivos de consulta/04 Viajes STAT/viajesstat_20211001.xlsx")
+kableExtra::kbl(head(viajesSTAT), caption = "20211001_ViajesSTAT", align = "lccrr") 
+```
+se cambia nombre de columnas para facilitar la union con la tabla SNE_1
+```{r}
+viajes <- rename(viajesSTAT, Servicio.Bus = Servicio, Viaje.Línea = IDViaje, Distance_Sum = Distance_Sum )
+```
+se cambia tipo variable 
+```{r}
+viajes$Viaje.Línea <- as.integer(viajes$Viaje.Línea)
+str(viajes)
+```
+# Se unen las tablas de acuerdo a -> "Servicio.Bus","Viaje.Línea"
+```{r}
+UNION_1 <- merge(SNE_1,viajes, by = c("Servicio.Bus","Viaje.Línea"))
+kableExtra::kbl(head(UNION_1), caption = "union de 20211001_SNE == 20211001_ViajesSTAT", align = "lccrr") %>%
+kable_classic(full_width = F, html_font = "Cambria")
+```
+#COMPARACION
+se procede a comparar km.EIC = Distance_Sum
+para verificar si cumplio con el desplazamiento programado
+```{r}
+UNION_1$res <- ifelse(UNION_1$km.EIC>= UNION_1$Distance_Sum, 'A',
+                      ifelse(UNION_1$km.EIC< UNION_1$Distance_Sum,'B','Tie'))
+```
+se separa los datos que posiblemente tiene una anomalia en el kilometraje reduciendo la informacion a un sexto de la que inicialmente se inicio
+```{r}
+anomalia_kilometros <- filter(UNION_1, UNION_1$res=="B")
+kableExtra::kbl(head(anomalia_kilometros), caption = "datos con kilometraje menor al km.EIC", align = "lccrr") %>%
+kable_classic(full_width = F, html_font = "Cambria")
+```
+lista de servicio de bus con viaje.lenia
+```{r}
+kableExtra::kbl(head(anomalia_kilometros$Servicio.Bus), caption = "kilometros", align = "lccrr") %>%
+kable_classic(full_width = F, html_font = "Cambria")
+```
+# Carga archivo completo de 20211001_ViajesSTAT
+```{r}
+ViajesSTAT_001 <-read_xls("Ejercicio 1/Archivos de consulta/04 Viajes STAT/20211001_ViajesSTAT.xls")
+```
+#Filtrar de la data 20211001_ViajesSTAT el documento que se nesecita para anexar a la informacion
+```{r}
+	
+	
+CDGIT0008_3<- filter(ViajesSTAT_001,ViajesSTAT_001$Servicio == "CDGIT0008" & ViajesSTAT_001$IDViaje == "3")
+kableExtra::kbl(head(CDGIT0011_1), caption = "kilometros", align = "lccrr") %>%
+kable_classic(full_width = F, html_font = "Cambria")
+```
+
+# CONCLUSIONES
+
+Se puede identificar las anomalias registradas y reducir el numero de datos que tienen soporte 
+en la base de datos de ViajesSTAT.
+
+reducir el tiempo de busqueda de anomalias.
